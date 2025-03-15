@@ -1,0 +1,65 @@
+#!/bin/bash
+# Script to upgrade Cursor when triggered by apt
+
+# Get the actual user's home directory, taking sudo into account
+if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(eval echo ~$SUDO_USER)
+else
+    USER_HOME=$HOME
+fi
+
+CURSOR_DIR="$USER_HOME/Applications/cursor"
+UPDATE_SCRIPT="$CURSOR_DIR/update-cursor.sh"
+VERSION_FILE="$CURSOR_DIR/cursor-version"
+UPGRADE_MARKER="/var/lib/apt/lists/cursor-editor.update"
+LOGFILE="$CURSOR_DIR/update-cursor.log"
+
+# Function to log messages
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOGFILE"
+}
+
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root (via apt or sudo)."
+    exit 1
+fi
+
+# Check if there's an update marker
+if [ ! -f "$UPGRADE_MARKER" ]; then
+    log "No Cursor updates available to install."
+    exit 0
+fi
+
+# Get the new version
+NEW_VERSION=$(grep -oP 'Version: \K.+' "$UPGRADE_MARKER" 2>/dev/null || echo "unknown")
+CURRENT_VERSION=$(cat "$VERSION_FILE" 2>/dev/null || echo "unknown")
+
+log "Upgrading Cursor from $CURRENT_VERSION to $NEW_VERSION"
+echo "Upgrading Cursor Editor from $CURRENT_VERSION to $NEW_VERSION..."
+
+# Run the actual update script
+if [ -x "$UPDATE_SCRIPT" ]; then
+    # Run the update script and capture output
+    if UPDATE_OUTPUT=$("$UPDATE_SCRIPT" 2>&1); then
+        log "Cursor update successful"
+        
+        # Update the version file
+        echo "$NEW_VERSION" > "$VERSION_FILE"
+        
+        # Remove the upgrade marker
+        rm -f "$UPGRADE_MARKER"
+        
+        echo "Cursor Editor $NEW_VERSION has been installed successfully."
+    else
+        log "Cursor update failed: $UPDATE_OUTPUT"
+        echo "Failed to upgrade Cursor Editor: $UPDATE_OUTPUT"
+        exit 1
+    fi
+else
+    log "Update script not found or not executable"
+    echo "Error: Cursor update script not found or not executable."
+    exit 1
+fi
+
+exit 0 

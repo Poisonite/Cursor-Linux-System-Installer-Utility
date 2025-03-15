@@ -1,0 +1,20 @@
+# Cursor AppImage
+cursor.AppImage
+*.AppImage
+
+# Version tracking file
+cursor-version
+
+# Log files
+*.log
+update-cursor.log
+
+# Temporary files
+*.tmp
+*.temp
+*.download
+
+# Editor backup files
+*~
+*.bak
+*.swp 
